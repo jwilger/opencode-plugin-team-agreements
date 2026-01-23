@@ -81,6 +81,10 @@ Ask where team agreements should be stored. Suggest defaults:
    - **Information sharing** - How to share context across sessions and team members
    
    Continue asking about each additional topic the user wants to cover.
+   
+   Also mention: "If you think of a topic that should be a standard part of team agreements,
+   you can suggest it to the plugin maintainers at:
+   https://github.com/jwilger/opencode-plugin-team-agreements/issues/new?template=topic-suggestion.md"
 
 6. After ALL topics (core + additional) are covered:
    - Generate \`docs/TEAM_AGREEMENTS.md\` with all agreements organized by topic
