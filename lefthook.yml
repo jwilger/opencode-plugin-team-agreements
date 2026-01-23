@@ -1,0 +1,14 @@
+# Lefthook configuration
+# Replicates CI checks locally before commit
+
+pre-commit:
+  parallel: true
+  commands:
+    build:
+      run: npm run build
+    
+    typecheck:
+      run: npx tsc --noEmit
+    
+    test:
+      run: npm test

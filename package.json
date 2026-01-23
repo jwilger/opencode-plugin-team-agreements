@@ -16,7 +16,8 @@
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run clean && npm run build"
+    "prepublishOnly": "npm run clean && npm run build",
+    "prepare": "lefthook install"
   },
   "keywords": [
     "opencode",
@@ -40,6 +41,7 @@
   "devDependencies": {
     "@opencode-ai/plugin": "^1.0.0",
     "@types/node": "^25.0.10",
+    "lefthook": "^2.0.15",
     "typescript": "^5.0.0",
     "vitest": "^4.0.18"
   },

@@ -15,9 +15,10 @@ import {
 } from "./index.js"
 
 describe("fileExists", () => {
-  const testDir = join(tmpdir(), "team-agreements-test-" + Date.now())
+  let testDir: string
 
   beforeEach(async () => {
+    testDir = join(tmpdir(), "team-agreements-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
     await mkdir(testDir, { recursive: true })
   })
 
@@ -44,9 +45,10 @@ describe("fileExists", () => {
 })
 
 describe("loadTeamAgreements", () => {
-  const testDir = join(tmpdir(), "team-agreements-test-" + Date.now())
+  let testDir: string
 
   beforeEach(async () => {
+    testDir = join(tmpdir(), "team-agreements-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
     await mkdir(join(testDir, "docs"), { recursive: true })
   })
 
@@ -168,9 +170,10 @@ describe("COMMAND_TEMPLATE", () => {
 })
 
 describe("detectEnforcementMechanisms", () => {
-  const testDir = join(tmpdir(), "enforcement-test-" + Date.now())
+  let testDir: string
 
   beforeEach(async () => {
+    testDir = join(tmpdir(), "enforcement-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
     await mkdir(testDir, { recursive: true })
   })
 
@@ -372,9 +375,10 @@ describe("PLUGIN_REPO", () => {
 })
 
 describe("TeamAgreementsPlugin", () => {
-  const testDir = join(tmpdir(), "team-agreements-plugin-test-" + Date.now())
+  let testDir: string
 
   beforeEach(async () => {
+    testDir = join(tmpdir(), "team-agreements-plugin-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
     await mkdir(join(testDir, "docs"), { recursive: true })
   })
 
