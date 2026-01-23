@@ -14,6 +14,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -38,7 +40,8 @@
   "devDependencies": {
     "@opencode-ai/plugin": "^1.0.0",
     "@types/node": "^25.0.10",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.0.0"

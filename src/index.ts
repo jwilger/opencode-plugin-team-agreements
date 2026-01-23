@@ -153,7 +153,7 @@ This document defines how our team (humans and LLM agents) collaborates on this 
 /**
  * Check if a file exists at the given path.
  */
-async function fileExists(path: string): Promise<boolean> {
+export async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path)
     return true
@@ -165,7 +165,7 @@ async function fileExists(path: string): Promise<boolean> {
 /**
  * Check if the gh CLI is installed and authenticated.
  */
-async function isGhAvailable(): Promise<boolean> {
+export async function isGhAvailable(): Promise<boolean> {
   try {
     await execAsync("gh auth status")
     return true
@@ -178,7 +178,7 @@ async function isGhAvailable(): Promise<boolean> {
  * Load team agreements from the project directory.
  * Returns the content if found, null otherwise.
  */
-async function loadTeamAgreements(directory: string): Promise<string | null> {
+export async function loadTeamAgreements(directory: string): Promise<string | null> {
   const defaultPath = join(directory, "docs", "TEAM_AGREEMENTS.md")
 
   try {
@@ -188,6 +188,43 @@ async function loadTeamAgreements(directory: string): Promise<string | null> {
     return null
   }
 }
+
+/**
+ * Format suggested questions as a markdown list.
+ */
+export function formatQuestionsAsMarkdown(questions: string[]): string {
+  return questions.map((q) => `- ${q}`).join("\n")
+}
+
+/**
+ * Build the issue body for a topic suggestion.
+ */
+export function buildTopicIssueBody(args: {
+  topic_name: string
+  description: string
+  suggested_questions: string[]
+  example_agreement?: string
+}): string {
+  const questionsFormatted = formatQuestionsAsMarkdown(args.suggested_questions)
+
+  return `## Topic Name
+${args.topic_name}
+
+## Description
+${args.description}
+
+## Suggested Questions
+${questionsFormatted}
+
+## Example Agreement
+${args.example_agreement || "_No example provided_"}
+
+## Additional Context
+_This issue was automatically created via the team-agreements plugin._`
+}
+
+// Export constants for testing
+export { COMMAND_TEMPLATE, PLUGIN_REPO }
 
 /**
  * TeamAgreementsPlugin - Helps teams establish and maintain shared agreements
@@ -263,25 +300,7 @@ export const TeamAgreementsPlugin: Plugin = async (ctx) => {
             )
           }
 
-          // Build the issue body
-          const questionsFormatted = args.suggested_questions
-            .map((q) => `- ${q}`)
-            .join("\n")
-
-          const body = `## Topic Name
-${args.topic_name}
-
-## Description
-${args.description}
-
-## Suggested Questions
-${questionsFormatted}
-
-## Example Agreement
-${args.example_agreement || "_No example provided_"}
-
-## Additional Context
-_This issue was automatically created via the team-agreements plugin._`
+          const body = buildTopicIssueBody(args)
 
           try {
             const title = `[Topic] ${args.topic_name}`
