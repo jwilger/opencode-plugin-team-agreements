@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.2.0...opencode-plugin-team-agreements-v0.2.1) (2026-01-23)
+
+
+### Features
+
+* Add comprehensive team agreements with project analysis and split document approach ([#16](https://github.com/jwilger/opencode-plugin-team-agreements/issues/16)) ([084edaa](https://github.com/jwilger/opencode-plugin-team-agreements/commit/084edaad210c23d6f25eaa64b09e730ba474d970))
+
 ## [0.2.0](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.4...opencode-plugin-team-agreements-v0.2.0) (2026-01-23)
 
 
