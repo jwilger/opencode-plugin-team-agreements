@@ -21,6 +21,8 @@ import {
   buildTopicIssueBody,
   detectEnforcementMechanisms,
   formatEnforcementResults,
+  analyzeProject,
+  formatProjectAnalysis,
   execAsync,
 } from "./utils.js"
 
@@ -56,6 +58,22 @@ export const TeamAgreementsPlugin: Plugin = async (ctx) => {
      * Tools for team agreements management
      */
     tool: {
+      /**
+       * Analyze the project to detect languages, frameworks, tools, etc.
+       */
+      analyze_project: tool({
+        description:
+          "Analyze the project to detect languages, frameworks, CI/CD, testing, AI tools, " +
+          "database, monitoring, and other characteristics. Use this at the start of the " +
+          "team agreements interview to tailor questions to the specific project. Returns " +
+          "recommendations for which categories to prioritize and which topics may be skippable.",
+        args: {},
+        async execute() {
+          const analysis = await analyzeProject(directory)
+          return formatProjectAnalysis(analysis)
+        },
+      }),
+
       /**
        * Detect existing enforcement mechanisms in the project
        */

@@ -4,18 +4,57 @@ An [OpenCode](https://opencode.ai) plugin that helps teams of humans and LLM age
 
 ## Features
 
-- **Interactive facilitation** - Guides teams through establishing agreements one topic at a time
-- **Core topics covered**:
-  - Storage location for agreements
-  - Programming languages and their purposes
-  - Code quality standards
-  - Commit message conventions
-  - Integration workflow (branching, PRs, CI)
-  - Testing requirements
-  - Amendment process for updating agreements
-- **Extensible** - Add custom topics beyond the core set
-- **Context injection** - Automatically injects agreements into LLM context at session start and after compaction
-- **Topic suggestions** - Users can suggest new standard topics via GitHub issues (using `gh` CLI)
+- **Comprehensive interview** - Covers 7 categories with ~22 topics for thorough team alignment
+- **Smart project analysis** - Detects languages, frameworks, CI, testing, AI tools to tailor questions
+- **Split document approach**:
+  - `docs/TEAM_AGREEMENTS.md` - Full reference documentation for humans
+  - `AGENTS.md` - Concise rules that LLMs need in context constantly
+- **Interactive facilitation** - Guides teams through one question at a time, allowing skips and pauses
+- **Enforcement setup** - Detects existing tooling and offers to set up automatic enforcement
+- **Context injection** - Automatically injects LLM-relevant rules after compaction
+- **Topic suggestions** - Suggest new standard topics via GitHub issues
+
+## Topics Covered
+
+### 1. Code & Quality
+- Programming Languages & Tech Stack
+- Code Quality Standards
+- Code Review Process
+- Testing Requirements
+
+### 2. Integration & Delivery
+- Version Control & Branching
+- Continuous Integration
+- Deployment & Release
+- Database & Schema Changes
+
+### 3. Operations & QA
+- Security Practices
+- Monitoring & Observability
+- Performance Standards
+- Accessibility & Internationalization
+
+### 4. Documentation & Knowledge
+- Documentation Standards
+- Architecture Decision Records (ADRs)
+- Dependency Management
+
+### 5. AI/LLM Collaboration
+- AI Tools & Policies
+- Autonomy Boundaries
+- AI Code Generation Standards
+- Context & Session Management
+- Human Oversight & Escalation
+- Learning & Improvement
+
+### 6. Team Process
+- Development Methodology
+- Planning & Work Breakdown
+- Communication & Collaboration
+
+### 7. Governance
+- Amendment Process
+- Open-Ended Topics
 
 ## Installation
 
@@ -36,26 +75,56 @@ Run the `/team-agreements` command in OpenCode:
 /team-agreements
 ```
 
-The plugin will guide you through establishing agreements for your project. You can also provide context:
+The plugin will first analyze your project and then guide you through establishing agreements. You can also provide context:
 
 ```
-/team-agreements I want to update our commit message conventions
+/team-agreements I want to update our AI collaboration policies
 ```
 
 ### Options when agreements exist
 
 If `docs/TEAM_AGREEMENTS.md` already exists, you'll be presented with options to:
 - **Review** - Display current agreements
-- **Amend** - Modify a specific section
-- **Start Over** - Begin fresh (with confirmation)
+- **Amend** - Modify specific sections
+- **Regenerate AGENTS.md** - Re-extract LLM-relevant rules
+
+### The split document approach
+
+This plugin creates two files with different purposes:
+
+**`docs/TEAM_AGREEMENTS.md`** - Comprehensive documentation including:
+- Complete code standards with examples
+- Full deployment and release procedures
+- On-call and incident processes
+- Meeting cadences and team ceremonies
+- Everything humans need for reference
+
+**`AGENTS.md`** - Only rules that affect day-to-day coding:
+- Code quality standards and patterns
+- Testing requirements
+- Commit message format
+- AI autonomy boundaries
+- Escalation triggers
+
+This split ensures LLM context isn't bloated with procedures they don't need constantly (deployment steps, post-mortem templates, etc.) while still giving humans complete documentation.
 
 ## How it works
 
-1. **Command registration** - The plugin registers the `/team-agreements` command via OpenCode's config hook
-2. **Interactive conversation** - An LLM guides you through each topic, asking one question at a time
-3. **Document generation** - Creates `docs/TEAM_AGREEMENTS.md` with your agreements
-4. **Auto-injection** - Adds agreements to the `instructions` config so all agents see them
-5. **Compaction handling** - Re-injects agreements after context compaction in long sessions
+1. **Project analysis** - Detects your tech stack, frameworks, CI/CD, and AI tools
+2. **Tailored interview** - Highlights relevant topics and suggests skippable ones
+3. **Interactive conversation** - One question at a time with trade-off discussions
+4. **Document generation** - Creates both `docs/TEAM_AGREEMENTS.md` and `AGENTS.md`
+5. **Enforcement detection** - Identifies existing tooling (ESLint, Prettier, Husky, etc.)
+6. **Enforcement setup** - Offers to configure automatic enforcement where possible
+7. **Compaction handling** - Re-injects AGENTS.md after context compaction
+
+## Tools provided
+
+The plugin registers these tools for LLM use:
+
+- `analyze_project` - Detects languages, frameworks, CI, testing, AI tools, and project characteristics
+- `detect_enforcement_mechanisms` - Finds existing linters, formatters, and CI workflows
+- `suggest_team_agreement_topic` - Files GitHub issues for new topic suggestions
 
 ## Suggesting new topics
 
@@ -77,6 +146,9 @@ npm install
 
 # Build
 npm run build
+
+# Run tests
+npm test
 
 # Watch mode for development
 npm run dev

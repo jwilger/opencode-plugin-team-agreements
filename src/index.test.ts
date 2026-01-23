@@ -10,9 +10,12 @@ import {
   buildTopicIssueBody,
   detectEnforcementMechanisms,
   formatEnforcementResults,
+  analyzeProject,
+  formatProjectAnalysis,
   COMMAND_TEMPLATE,
   PLUGIN_REPO,
   type EnforcementMechanism,
+  type ProjectAnalysis,
 } from "./utils.js"
 
 describe("fileExists", () => {
@@ -161,14 +164,27 @@ describe("COMMAND_TEMPLATE", () => {
     expect(COMMAND_TEMPLATE).toContain("$ARGUMENTS")
     expect(COMMAND_TEMPLATE).toContain("## Overview")
     expect(COMMAND_TEMPLATE).toContain("AGENTS.md")
-    expect(COMMAND_TEMPLATE).toContain("## Step 1: Analyze Existing Files")
+    expect(COMMAND_TEMPLATE).toContain("## Step 1: Analyze Project & Existing Files")
     expect(COMMAND_TEMPLATE).toContain("## Step 2: Determine the Scenario")
-    expect(COMMAND_TEMPLATE).toContain("## Step 3: Gather Team Agreements")
+    expect(COMMAND_TEMPLATE).toContain("## Step 3: Present Categories Based on Analysis")
+    expect(COMMAND_TEMPLATE).toContain("## Step 4: Gather Team Agreements")
+    // Categories
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 1: CODE & QUALITY")
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 2: INTEGRATION & DELIVERY")
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 3: OPERATIONS & QA")
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 4: DOCUMENTATION & KNOWLEDGE")
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 5: AI/LLM COLLABORATION")
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 6: TEAM PROCESS")
+    expect(COMMAND_TEMPLATE).toContain("CATEGORY 7: GOVERNANCE")
+    // Topics
     expect(COMMAND_TEMPLATE).toContain("Programming Languages")
     expect(COMMAND_TEMPLATE).toContain("Code Quality Standards")
-    expect(COMMAND_TEMPLATE).toContain("Commit Message Conventions")
-    expect(COMMAND_TEMPLATE).toContain("Integration Workflow")
+    expect(COMMAND_TEMPLATE).toContain("Code Review Process")
     expect(COMMAND_TEMPLATE).toContain("Testing Requirements")
+    expect(COMMAND_TEMPLATE).toContain("Version Control & Branching")
+    expect(COMMAND_TEMPLATE).toContain("Security Practices")
+    expect(COMMAND_TEMPLATE).toContain("AI Tools & Policies")
+    expect(COMMAND_TEMPLATE).toContain("Autonomy Boundaries")
     expect(COMMAND_TEMPLATE).toContain("Amendment Process")
   })
 
@@ -176,25 +192,43 @@ describe("COMMAND_TEMPLATE", () => {
     expect(COMMAND_TEMPLATE).toContain("suggest_team_agreement_topic")
   })
 
+  it("mentions the analyze_project tool", () => {
+    expect(COMMAND_TEMPLATE).toContain("analyze_project")
+  })
+
   it("contains enforcement section", () => {
     expect(COMMAND_TEMPLATE).toContain("detect_enforcement_mechanisms")
     expect(COMMAND_TEMPLATE).toContain("Enforcement Mechanisms")
-    expect(COMMAND_TEMPLATE).toContain("Pre-commit Hooks")
-    expect(COMMAND_TEMPLATE).toContain("CI Workflows")
-    expect(COMMAND_TEMPLATE).toContain("GitHub Rulesets")
-    expect(COMMAND_TEMPLATE).toContain("Linting Rules")
+    expect(COMMAND_TEMPLATE).toContain("commitlint")
+    expect(COMMAND_TEMPLATE).toContain("CI workflows")
+    expect(COMMAND_TEMPLATE).toContain("branch protection")
   })
 
-  it("contains intelligent merging section", () => {
-    expect(COMMAND_TEMPLATE).toContain("## Step 4: Intelligent Merging")
+  it("contains merging guidelines section", () => {
+    expect(COMMAND_TEMPLATE).toContain("## Step 5: Generate Documents")
+    expect(COMMAND_TEMPLATE).toContain("### Merging Guidelines")
     expect(COMMAND_TEMPLATE).toContain("Preserve existing structure")
     expect(COMMAND_TEMPLATE).toContain("Avoid duplication")
   })
 
   it("contains CLAUDE.md coordination section", () => {
-    expect(COMMAND_TEMPLATE).toContain("## Step 5: Handle CLAUDE.md Coordination")
+    expect(COMMAND_TEMPLATE).toContain("## Step 6: Handle CLAUDE.md Coordination")
     expect(COMMAND_TEMPLATE).toContain("@AGENTS.md")
     expect(COMMAND_TEMPLATE).toContain("Claude-specific")
+  })
+
+  it("contains AI/LLM collaboration topics", () => {
+    expect(COMMAND_TEMPLATE).toContain("AI Tools & Policies")
+    expect(COMMAND_TEMPLATE).toContain("Autonomy Boundaries")
+    expect(COMMAND_TEMPLATE).toContain("AI Code Generation Standards")
+    expect(COMMAND_TEMPLATE).toContain("Context & Session Management")
+    expect(COMMAND_TEMPLATE).toContain("Human Oversight & Escalation")
+    expect(COMMAND_TEMPLATE).toContain("Learning & Improvement")
+  })
+
+  it("contains progress tracking guidance", () => {
+    expect(COMMAND_TEMPLATE).toContain("Category X of 7")
+    expect(COMMAND_TEMPLATE).toContain("25-40 minutes")
   })
 })
 
@@ -559,5 +593,471 @@ describe("TeamAgreementsPlugin", () => {
 
     expect(result).toContain("Detected Enforcement Mechanisms")
     expect(result).toContain("husky")
+  })
+
+  it("registers the analyze_project tool", async () => {
+    const mockCtx = {
+      directory: testDir,
+      client: {},
+      project: {},
+      worktree: testDir,
+      serverUrl: new URL("http://localhost"),
+      $: {} as any,
+    }
+
+    const hooks = await TeamAgreementsPlugin(mockCtx as any)
+
+    expect(hooks.tool).toBeDefined()
+    expect(hooks.tool!.analyze_project).toBeDefined()
+    expect(hooks.tool!.analyze_project.description).toContain("Analyze the project")
+  })
+
+  it("analyze_project tool returns formatted results", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      dependencies: { react: "^18.0.0", express: "^4.0.0" },
+      devDependencies: { typescript: "^5.0.0", vitest: "^1.0.0" }
+    }))
+
+    const mockCtx = {
+      directory: testDir,
+      client: {},
+      project: {},
+      worktree: testDir,
+      serverUrl: new URL("http://localhost"),
+      $: {} as any,
+    }
+
+    const mockToolContext = {
+      sessionID: "test-session",
+      messageID: "test-message",
+      agent: "test-agent",
+      abort: new AbortController().signal,
+      metadata: () => {},
+      ask: async () => {},
+    }
+
+    const hooks = await TeamAgreementsPlugin(mockCtx as any)
+    const result = await hooks.tool!.analyze_project.execute({}, mockToolContext)
+
+    expect(result).toContain("Project Analysis Results")
+    expect(result).toContain("Languages")
+    expect(result).toContain("Typescript")
+    expect(result).toContain("Frameworks")
+    expect(result).toContain("React")
+  })
+})
+
+describe("analyzeProject", () => {
+  let testDir: string
+
+  beforeEach(async () => {
+    testDir = join(tmpdir(), "analyze-project-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
+    await mkdir(testDir, { recursive: true })
+  })
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true })
+  })
+
+  it("returns default analysis for empty project", async () => {
+    const result = await analyzeProject(testDir)
+
+    expect(result.languages.typescript).toBe(false)
+    expect(result.languages.javascript).toBe(false)
+    expect(result.frameworks.react).toBe(false)
+    expect(result.ci.githubActions).toBe(false)
+    expect(result.aiTools.agentsMd).toBe(false)
+    expect(result.recommendations.suggestedCategories).toContain("Code & Quality")
+  })
+
+  it("detects TypeScript from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      devDependencies: { typescript: "^5.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.languages.typescript).toBe(true)
+    expect(result.languages.javascript).toBe(true)
+  })
+
+  it("detects TypeScript from tsconfig.json", async () => {
+    await writeFile(join(testDir, "tsconfig.json"), JSON.stringify({
+      compilerOptions: { target: "ES2022" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.languages.typescript).toBe(true)
+  })
+
+  it("detects Python from pyproject.toml", async () => {
+    await writeFile(join(testDir, "pyproject.toml"), "[project]\nname = 'test'")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.languages.python).toBe(true)
+  })
+
+  it("detects Rust from Cargo.toml", async () => {
+    await writeFile(join(testDir, "Cargo.toml"), "[package]\nname = 'test'")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.languages.rust).toBe(true)
+  })
+
+  it("detects Go from go.mod", async () => {
+    await writeFile(join(testDir, "go.mod"), "module example.com/test")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.languages.go).toBe(true)
+  })
+
+  it("detects React from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      dependencies: { react: "^18.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.frameworks.react).toBe(true)
+    expect(result.characteristics.hasFrontend).toBe(true)
+  })
+
+  it("detects Express from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      dependencies: { express: "^4.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.frameworks.express).toBe(true)
+    expect(result.characteristics.hasBackend).toBe(true)
+    expect(result.characteristics.hasApi).toBe(true)
+  })
+
+  it("detects Next.js from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      dependencies: { next: "^14.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.frameworks.nextjs).toBe(true)
+    expect(result.characteristics.hasFrontend).toBe(true)
+    expect(result.characteristics.hasBackend).toBe(true)
+  })
+
+  it("detects GitHub Actions", async () => {
+    await mkdir(join(testDir, ".github", "workflows"), { recursive: true })
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.ci.githubActions).toBe(true)
+  })
+
+  it("detects GitLab CI", async () => {
+    await writeFile(join(testDir, ".gitlab-ci.yml"), "stages:\n  - build")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.ci.gitlabCi).toBe(true)
+  })
+
+  it("detects Jest from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      devDependencies: { jest: "^29.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.testing.jest).toBe(true)
+  })
+
+  it("detects Vitest from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      devDependencies: { vitest: "^1.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.testing.vitest).toBe(true)
+  })
+
+  it("detects pytest from conftest.py", async () => {
+    await writeFile(join(testDir, "conftest.py"), "# pytest config")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.testing.pytest).toBe(true)
+  })
+
+  it("detects test directory", async () => {
+    await mkdir(join(testDir, "tests"), { recursive: true })
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.testing.hasTestDirectory).toBe(true)
+  })
+
+  it("detects AGENTS.md", async () => {
+    await writeFile(join(testDir, "AGENTS.md"), "# Agent Instructions")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.aiTools.agentsMd).toBe(true)
+  })
+
+  it("detects CLAUDE.md", async () => {
+    await writeFile(join(testDir, "CLAUDE.md"), "# Claude Instructions")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.aiTools.claudeMd).toBe(true)
+  })
+
+  it("detects GitHub Copilot instructions", async () => {
+    await mkdir(join(testDir, ".github"), { recursive: true })
+    await writeFile(join(testDir, ".github", "copilot-instructions.md"), "# Instructions")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.aiTools.copilotInstructions).toBe(true)
+  })
+
+  it("detects Cursor rules", async () => {
+    await writeFile(join(testDir, ".cursorrules"), "# Rules")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.aiTools.cursorRules).toBe(true)
+  })
+
+  it("detects OpenCode config", async () => {
+    await writeFile(join(testDir, "opencode.json"), '{}')
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.aiTools.openCodeConfig).toBe(true)
+  })
+
+  it("detects Prisma", async () => {
+    await mkdir(join(testDir, "prisma"), { recursive: true })
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.database.prisma).toBe(true)
+  })
+
+  it("detects migrations directory", async () => {
+    await mkdir(join(testDir, "migrations"), { recursive: true })
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.database.hasMigrations).toBe(true)
+  })
+
+  it("detects Sentry from package.json", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      dependencies: { "@sentry/node": "^7.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.monitoring.sentry).toBe(true)
+  })
+
+  it("detects Docker", async () => {
+    await writeFile(join(testDir, "Dockerfile"), "FROM node:20")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.characteristics.hasDocker).toBe(true)
+  })
+
+  it("detects monorepo from workspaces", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      workspaces: ["packages/*"]
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.characteristics.isMonorepo).toBe(true)
+  })
+
+  it("detects library from package.json exports", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      main: "dist/index.js",
+      exports: { ".": "./dist/index.js" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.characteristics.isLibrary).toBe(true)
+  })
+
+  it("highlights AI collaboration when AI tools detected", async () => {
+    await writeFile(join(testDir, "AGENTS.md"), "# Instructions")
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.recommendations.highlightedTopics).toContain("AI/LLM Collaboration")
+  })
+
+  it("marks database topics as skippable when no database", async () => {
+    const result = await analyzeProject(testDir)
+
+    expect(result.recommendations.skippableTopics).toContain("Database & Schema Changes")
+  })
+
+  it("marks a11y as skippable when no frontend", async () => {
+    await writeFile(join(testDir, "package.json"), JSON.stringify({
+      dependencies: { express: "^4.0.0" }
+    }))
+
+    const result = await analyzeProject(testDir)
+
+    expect(result.recommendations.skippableTopics).toContain("Accessibility & Internationalization")
+  })
+})
+
+describe("formatProjectAnalysis", () => {
+  it("formats empty analysis", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: false, javascript: false, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: false, vue: false, angular: false, nextjs: false, express: false, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: false, claudeMd: false, copilotInstructions: false, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: ["Code & Quality"], highlightedTopics: [], skippableTopics: [] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("Project Analysis Results")
+    expect(result).toContain("Recommendations")
+    expect(result).toContain("Code & Quality")
+  })
+
+  it("formats languages section", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: true, javascript: true, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: false, vue: false, angular: false, nextjs: false, express: false, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: false, claudeMd: false, copilotInstructions: false, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: [], highlightedTopics: [], skippableTopics: [] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("### Languages")
+    expect(result).toContain("Typescript")
+    expect(result).toContain("Javascript")
+  })
+
+  it("formats frameworks section", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: false, javascript: false, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: true, vue: false, angular: false, nextjs: false, express: true, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: false, claudeMd: false, copilotInstructions: false, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: [], highlightedTopics: [], skippableTopics: [] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("### Frameworks")
+    expect(result).toContain("React")
+    expect(result).toContain("Express")
+  })
+
+  it("formats AI tools section", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: false, javascript: false, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: false, vue: false, angular: false, nextjs: false, express: false, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: true, claudeMd: false, copilotInstructions: true, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: [], highlightedTopics: [], skippableTopics: [] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("### AI Tools Configuration")
+    expect(result).toContain("AGENTS.md")
+    expect(result).toContain("GitHub Copilot instructions")
+  })
+
+  it("shows no CI message when not detected", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: false, javascript: false, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: false, vue: false, angular: false, nextjs: false, express: false, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: false, claudeMd: false, copilotInstructions: false, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: [], highlightedTopics: [], skippableTopics: [] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("No CI/CD detected")
+  })
+
+  it("formats highlighted topics", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: false, javascript: false, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: false, vue: false, angular: false, nextjs: false, express: false, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: false, claudeMd: false, copilotInstructions: false, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: [], highlightedTopics: ["AI/LLM Collaboration", "Security"], skippableTopics: [] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("Topics to highlight")
+    expect(result).toContain("AI/LLM Collaboration")
+    expect(result).toContain("Security")
+  })
+
+  it("formats skippable topics", () => {
+    const analysis: ProjectAnalysis = {
+      languages: { typescript: false, javascript: false, python: false, rust: false, go: false, ruby: false, java: false, csharp: false, other: [] },
+      frameworks: { react: false, vue: false, angular: false, nextjs: false, express: false, fastapi: false, django: false, rails: false, springBoot: false, other: [] },
+      ci: { githubActions: false, gitlabCi: false, circleCi: false, jenkins: false, other: [] },
+      testing: { jest: false, vitest: false, mocha: false, pytest: false, rspec: false, goTest: false, hasTestDirectory: false, other: [] },
+      aiTools: { agentsMd: false, claudeMd: false, copilotInstructions: false, cursorRules: false, continueConfig: false, openCodeConfig: false },
+      database: { prisma: false, sequelize: false, typeorm: false, drizzle: false, sqlalchemy: false, activeRecord: false, hasMigrations: false, other: [] },
+      monitoring: { sentry: false, datadog: false, newRelic: false, prometheus: false, other: [] },
+      characteristics: { isMonorepo: false, isLibrary: false, hasDocker: false, hasFrontend: false, hasBackend: false, hasApi: false, hasDocs: false },
+      recommendations: { suggestedCategories: [], highlightedTopics: [], skippableTopics: ["Database & Schema Changes"] }
+    }
+
+    const result = formatProjectAnalysis(analysis)
+
+    expect(result).toContain("Topics that may be skippable")
+    expect(result).toContain("Database & Schema Changes")
   })
 })
