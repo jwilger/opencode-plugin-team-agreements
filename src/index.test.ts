@@ -7,6 +7,8 @@ import {
   loadTeamAgreements,
   formatQuestionsAsMarkdown,
   buildTopicIssueBody,
+  detectEnforcementMechanisms,
+  formatEnforcementResults,
   COMMAND_TEMPLATE,
   PLUGIN_REPO,
   TeamAgreementsPlugin,
@@ -153,6 +155,213 @@ describe("COMMAND_TEMPLATE", () => {
 
   it("mentions the suggestion tool", () => {
     expect(COMMAND_TEMPLATE).toContain("suggest_team_agreement_topic")
+  })
+
+  it("contains enforcement section", () => {
+    expect(COMMAND_TEMPLATE).toContain("detect_enforcement_mechanisms")
+    expect(COMMAND_TEMPLATE).toContain("Enforcement Mechanisms")
+    expect(COMMAND_TEMPLATE).toContain("Pre-commit Hooks")
+    expect(COMMAND_TEMPLATE).toContain("CI Workflows")
+    expect(COMMAND_TEMPLATE).toContain("GitHub Rulesets")
+    expect(COMMAND_TEMPLATE).toContain("OpenCode Plugin Hooks")
+  })
+})
+
+describe("detectEnforcementMechanisms", () => {
+  const testDir = join(tmpdir(), "enforcement-test-" + Date.now())
+
+  beforeEach(async () => {
+    await mkdir(testDir, { recursive: true })
+  })
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true })
+  })
+
+  it("returns empty array for project with no enforcement", async () => {
+    const result = await detectEnforcementMechanisms(testDir)
+    expect(result).toEqual([])
+  })
+
+  it("detects husky pre-commit hooks", async () => {
+    await mkdir(join(testDir, ".husky"), { recursive: true })
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "pre-commit",
+        name: "husky",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects lefthook", async () => {
+    await writeFile(join(testDir, "lefthook.yml"), "pre-commit:\n  commands: []")
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "pre-commit",
+        name: "lefthook",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects commitlint", async () => {
+    await writeFile(
+      join(testDir, "commitlint.config.js"),
+      "module.exports = { extends: ['@commitlint/config-conventional'] }"
+    )
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "commit-validation",
+        name: "commitlint",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects eslint", async () => {
+    await writeFile(join(testDir, ".eslintrc.json"), '{ "extends": "eslint:recommended" }')
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "linter",
+        name: "eslint",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects biome", async () => {
+    await writeFile(join(testDir, "biome.json"), '{ "formatter": { "enabled": true } }')
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "linter",
+        name: "biome",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects GitHub Actions", async () => {
+    await mkdir(join(testDir, ".github", "workflows"), { recursive: true })
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "ci",
+        name: "github-actions",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects GitHub PR templates", async () => {
+    await mkdir(join(testDir, ".github"), { recursive: true })
+    await writeFile(join(testDir, ".github", "pull_request_template.md"), "## Description")
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "pr-template",
+        name: "github-pr-template",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects opencode.json", async () => {
+    await writeFile(join(testDir, "opencode.json"), '{ "instructions": [] }')
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "opencode",
+        name: "opencode-config",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects prettier", async () => {
+    await writeFile(join(testDir, ".prettierrc"), '{ "semi": true }')
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        type: "formatter",
+        name: "prettier",
+        detected: true,
+      })
+    )
+  })
+
+  it("detects multiple mechanisms", async () => {
+    await mkdir(join(testDir, ".husky"), { recursive: true })
+    await mkdir(join(testDir, ".github", "workflows"), { recursive: true })
+    await writeFile(join(testDir, "biome.json"), "{}")
+
+    const result = await detectEnforcementMechanisms(testDir)
+
+    expect(result.length).toBeGreaterThanOrEqual(3)
+    expect(result.map((m) => m.name)).toContain("husky")
+    expect(result.map((m) => m.name)).toContain("github-actions")
+    expect(result.map((m) => m.name)).toContain("biome")
+  })
+})
+
+describe("formatEnforcementResults", () => {
+  it("formats empty results with suggestions", () => {
+    const result = formatEnforcementResults([])
+
+    expect(result).toContain("No existing enforcement mechanisms detected")
+    expect(result).toContain("Available Options")
+    expect(result).toContain("husky")
+    expect(result).toContain("commitlint")
+    expect(result).toContain("GitHub Actions")
+  })
+
+  it("formats detected mechanisms grouped by type", () => {
+    const result = formatEnforcementResults([
+      {
+        type: "pre-commit",
+        name: "husky",
+        detected: true,
+        configFile: ".husky/",
+        notes: "Git hooks manager",
+      },
+      {
+        type: "linter",
+        name: "eslint",
+        detected: true,
+        configFile: ".eslintrc.json",
+        notes: "JS linter",
+      },
+    ])
+
+    expect(result).toContain("Detected Enforcement Mechanisms")
+    expect(result).toContain("Pre-commit Hooks")
+    expect(result).toContain("**husky**")
+    expect(result).toContain("Linters")
+    expect(result).toContain("**eslint**")
+    expect(result).toContain("Recommendations")
   })
 })
 
@@ -313,5 +522,50 @@ describe("TeamAgreementsPlugin", () => {
     expect(hooks.tool).toBeDefined()
     expect(hooks.tool!.suggest_team_agreement_topic).toBeDefined()
     expect(hooks.tool!.suggest_team_agreement_topic.description).toContain("Suggest a new topic")
+  })
+
+  it("registers the detect_enforcement_mechanisms tool", async () => {
+    const mockCtx = {
+      directory: testDir,
+      client: {},
+      project: {},
+      worktree: testDir,
+      serverUrl: new URL("http://localhost"),
+      $: {} as any,
+    }
+
+    const hooks = await TeamAgreementsPlugin(mockCtx as any)
+
+    expect(hooks.tool).toBeDefined()
+    expect(hooks.tool!.detect_enforcement_mechanisms).toBeDefined()
+    expect(hooks.tool!.detect_enforcement_mechanisms.description).toContain("enforcement mechanisms")
+  })
+
+  it("detect_enforcement_mechanisms tool returns formatted results", async () => {
+    await mkdir(join(testDir, ".husky"), { recursive: true })
+
+    const mockCtx = {
+      directory: testDir,
+      client: {},
+      project: {},
+      worktree: testDir,
+      serverUrl: new URL("http://localhost"),
+      $: {} as any,
+    }
+
+    const mockToolContext = {
+      sessionID: "test-session",
+      messageID: "test-message",
+      agent: "test-agent",
+      abort: new AbortController().signal,
+      metadata: () => {},
+      ask: async () => {},
+    }
+
+    const hooks = await TeamAgreementsPlugin(mockCtx as any)
+    const result = await hooks.tool!.detect_enforcement_mechanisms.execute({}, mockToolContext)
+
+    expect(result).toContain("Detected Enforcement Mechanisms")
+    expect(result).toContain("husky")
   })
 })

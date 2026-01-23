@@ -100,6 +100,63 @@ Ask where team agreements should be stored. Suggest defaults:
    - Update \`opencode.json\` to include \`docs/TEAM_AGREEMENTS.md\` in the \`instructions\` array
    - Summarize what was established
 
+7. **After generating the agreements**, use the \`detect_enforcement_mechanisms\` tool to check what enforcement is already in place, then offer to set up automatic enforcement for agreements that can be enforced programmatically.
+
+   For each agreement that CAN be automatically enforced, ask the user if they'd like help setting it up. Here are the enforcement mechanisms to consider:
+
+   ### Enforcement Mechanisms
+
+   #### OpenCode Plugin Hooks
+   Ideal for: LLM behavior guidance, context injection, custom commands
+   - Can add validation in \`tool.execute.before\` hooks
+   - Can transform messages via \`experimental.chat.messages.transform\`
+   - Can inject reminders in \`experimental.session.compacting\`
+
+   #### Pre-commit Hooks (husky, lefthook, pre-commit)
+   Ideal for: Commit message validation, code formatting, linting, test execution
+   - **Commit messages**: Use commitlint with husky for Conventional Commits or custom formats
+   - **Code formatting**: Run prettier/eslint/biome on staged files
+   - **Tests**: Run affected tests before allowing commits
+   - **File restrictions**: Prevent commits to certain paths
+
+   #### CI Workflows (GitHub Actions, etc.)
+   Ideal for: Test coverage, build verification, security scanning, PR checks
+   - **Testing requirements**: Enforce coverage thresholds, run full test suites
+   - **Code quality**: Run linters, type checking, security audits
+   - **Build verification**: Ensure the project builds successfully
+   - **PR requirements**: Block merging until checks pass
+
+   #### GitHub Rulesets / Branch Protection
+   Ideal for: PR requirements, review policies, merge restrictions
+   - **Required reviews**: Set minimum approvals before merge
+   - **Required checks**: Specify which CI checks must pass
+   - **Branch restrictions**: Control who can push to main/protected branches
+   - **Commit signing**: Require verified commits
+
+   #### Linting Rules (.eslintrc, biome.json, etc.)
+   Ideal for: Code style, naming conventions, import organization, complexity limits
+   - **Naming conventions**: Enforce variable/function/file naming patterns
+   - **Code patterns**: Require/forbid certain coding patterns
+   - **Import organization**: Enforce import ordering and restrictions
+
+   ### Mapping Agreements to Enforcement
+
+   | Agreement Topic | Possible Enforcement |
+   |-----------------|---------------------|
+   | Commit message conventions | commitlint + husky, GitHub Actions check |
+   | Code quality standards | ESLint/Biome rules, pre-commit hooks, CI checks |
+   | Testing requirements | CI workflow with coverage thresholds, pre-commit test runs |
+   | Integration workflow | GitHub rulesets, required status checks, PR templates |
+   | Programming language standards | Language-specific linters, compiler flags |
+
+   ### When Offering Enforcement
+
+   - Only offer enforcement for agreements that can actually be automated
+   - Explain what the enforcement will do and how it works
+   - Get explicit confirmation before making changes
+   - If enforcement tooling already exists (detected by the tool), offer to update/extend it rather than replace it
+   - Document what enforcement was set up in the TEAM_AGREEMENTS.md file
+
 ## Output Format
 
 When generating the TEAM_AGREEMENTS.md file, use this structure:
@@ -223,6 +280,282 @@ ${args.example_agreement || "_No example provided_"}
 _This issue was automatically created via the team-agreements plugin._`
 }
 
+/**
+ * Enforcement mechanism detection result.
+ */
+export interface EnforcementMechanism {
+  type: string
+  name: string
+  detected: boolean
+  configFile?: string
+  notes?: string
+}
+
+/**
+ * Detect existing enforcement mechanisms in the project.
+ */
+export async function detectEnforcementMechanisms(
+  directory: string
+): Promise<EnforcementMechanism[]> {
+  const mechanisms: EnforcementMechanism[] = []
+
+  // Pre-commit hooks
+  const huskyPath = join(directory, ".husky")
+  const lefthookPath = join(directory, "lefthook.yml")
+  const lefthookAltPath = join(directory, ".lefthook.yml")
+  const preCommitPath = join(directory, ".pre-commit-config.yaml")
+
+  if (await fileExists(huskyPath)) {
+    mechanisms.push({
+      type: "pre-commit",
+      name: "husky",
+      detected: true,
+      configFile: ".husky/",
+      notes: "Git hooks manager for Node.js projects",
+    })
+  }
+  if (await fileExists(lefthookPath)) {
+    mechanisms.push({
+      type: "pre-commit",
+      name: "lefthook",
+      detected: true,
+      configFile: "lefthook.yml",
+      notes: "Fast, cross-platform git hooks manager",
+    })
+  } else if (await fileExists(lefthookAltPath)) {
+    mechanisms.push({
+      type: "pre-commit",
+      name: "lefthook",
+      detected: true,
+      configFile: ".lefthook.yml",
+      notes: "Fast, cross-platform git hooks manager",
+    })
+  }
+  if (await fileExists(preCommitPath)) {
+    mechanisms.push({
+      type: "pre-commit",
+      name: "pre-commit",
+      detected: true,
+      configFile: ".pre-commit-config.yaml",
+      notes: "Python-based pre-commit framework",
+    })
+  }
+
+  // Commit message validation
+  const commitlintPath = join(directory, "commitlint.config.js")
+  const commitlintCjsPath = join(directory, "commitlint.config.cjs")
+  const commitlintJsonPath = join(directory, ".commitlintrc.json")
+
+  if (
+    (await fileExists(commitlintPath)) ||
+    (await fileExists(commitlintCjsPath)) ||
+    (await fileExists(commitlintJsonPath))
+  ) {
+    mechanisms.push({
+      type: "commit-validation",
+      name: "commitlint",
+      detected: true,
+      configFile:
+        (await fileExists(commitlintPath))
+          ? "commitlint.config.js"
+          : (await fileExists(commitlintCjsPath))
+            ? "commitlint.config.cjs"
+            : ".commitlintrc.json",
+      notes: "Lint commit messages against conventional commit format",
+    })
+  }
+
+  // Linters
+  const eslintPath = join(directory, ".eslintrc.json")
+  const eslintJsPath = join(directory, "eslint.config.js")
+  const eslintMjsPath = join(directory, "eslint.config.mjs")
+  const biomePath = join(directory, "biome.json")
+  const biomeJsoncPath = join(directory, "biome.jsonc")
+
+  if (
+    (await fileExists(eslintPath)) ||
+    (await fileExists(eslintJsPath)) ||
+    (await fileExists(eslintMjsPath))
+  ) {
+    mechanisms.push({
+      type: "linter",
+      name: "eslint",
+      detected: true,
+      configFile: (await fileExists(eslintPath))
+        ? ".eslintrc.json"
+        : (await fileExists(eslintJsPath))
+          ? "eslint.config.js"
+          : "eslint.config.mjs",
+      notes: "JavaScript/TypeScript linter",
+    })
+  }
+  if ((await fileExists(biomePath)) || (await fileExists(biomeJsoncPath))) {
+    mechanisms.push({
+      type: "linter",
+      name: "biome",
+      detected: true,
+      configFile: (await fileExists(biomePath)) ? "biome.json" : "biome.jsonc",
+      notes: "Fast formatter and linter for JS/TS/JSON",
+    })
+  }
+
+  // CI Workflows
+  const githubWorkflowsPath = join(directory, ".github", "workflows")
+  if (await fileExists(githubWorkflowsPath)) {
+    mechanisms.push({
+      type: "ci",
+      name: "github-actions",
+      detected: true,
+      configFile: ".github/workflows/",
+      notes: "GitHub Actions CI/CD workflows",
+    })
+  }
+
+  const gitlabCiPath = join(directory, ".gitlab-ci.yml")
+  if (await fileExists(gitlabCiPath)) {
+    mechanisms.push({
+      type: "ci",
+      name: "gitlab-ci",
+      detected: true,
+      configFile: ".gitlab-ci.yml",
+      notes: "GitLab CI/CD pipeline",
+    })
+  }
+
+  const circleCiPath = join(directory, ".circleci", "config.yml")
+  if (await fileExists(circleCiPath)) {
+    mechanisms.push({
+      type: "ci",
+      name: "circleci",
+      detected: true,
+      configFile: ".circleci/config.yml",
+      notes: "CircleCI pipeline",
+    })
+  }
+
+  // PR Templates
+  const prTemplatePath = join(directory, ".github", "pull_request_template.md")
+  const prTemplateAltPath = join(directory, ".github", "PULL_REQUEST_TEMPLATE.md")
+  if ((await fileExists(prTemplatePath)) || (await fileExists(prTemplateAltPath))) {
+    mechanisms.push({
+      type: "pr-template",
+      name: "github-pr-template",
+      detected: true,
+      configFile: (await fileExists(prTemplatePath))
+        ? ".github/pull_request_template.md"
+        : ".github/PULL_REQUEST_TEMPLATE.md",
+      notes: "GitHub Pull Request template",
+    })
+  }
+
+  // OpenCode configuration
+  const opencodePath = join(directory, "opencode.json")
+  if (await fileExists(opencodePath)) {
+    mechanisms.push({
+      type: "opencode",
+      name: "opencode-config",
+      detected: true,
+      configFile: "opencode.json",
+      notes: "OpenCode configuration with hooks and plugins",
+    })
+  }
+
+  // Formatters
+  const prettierPath = join(directory, ".prettierrc")
+  const prettierJsonPath = join(directory, ".prettierrc.json")
+  const prettierJsPath = join(directory, "prettier.config.js")
+  if (
+    (await fileExists(prettierPath)) ||
+    (await fileExists(prettierJsonPath)) ||
+    (await fileExists(prettierJsPath))
+  ) {
+    mechanisms.push({
+      type: "formatter",
+      name: "prettier",
+      detected: true,
+      configFile: (await fileExists(prettierPath))
+        ? ".prettierrc"
+        : (await fileExists(prettierJsonPath))
+          ? ".prettierrc.json"
+          : "prettier.config.js",
+      notes: "Code formatter for JS/TS/CSS/HTML/JSON/MD",
+    })
+  }
+
+  return mechanisms
+}
+
+/**
+ * Format enforcement detection results as markdown.
+ */
+export function formatEnforcementResults(mechanisms: EnforcementMechanism[]): string {
+  if (mechanisms.length === 0) {
+    return `## Detected Enforcement Mechanisms
+
+No existing enforcement mechanisms detected. This is a great opportunity to set up automation for your team agreements!
+
+### Available Options
+
+You can set up any of the following:
+
+**Pre-commit Hooks**
+- husky (Node.js projects)
+- lefthook (cross-platform, fast)
+- pre-commit (Python-based, language-agnostic)
+
+**Commit Message Validation**
+- commitlint (conventional commits)
+
+**Linting/Formatting**
+- ESLint (JavaScript/TypeScript)
+- Biome (JS/TS/JSON, fast)
+- Prettier (formatting)
+
+**CI/CD**
+- GitHub Actions
+- GitLab CI
+- CircleCI
+
+**GitHub Features**
+- Pull Request templates
+- Branch protection rulesets`
+  }
+
+  const byType: Record<string, EnforcementMechanism[]> = {}
+  for (const m of mechanisms) {
+    if (!byType[m.type]) byType[m.type] = []
+    byType[m.type].push(m)
+  }
+
+  let result = `## Detected Enforcement Mechanisms
+
+The following enforcement mechanisms are already in place:\n\n`
+
+  const typeLabels: Record<string, string> = {
+    "pre-commit": "Pre-commit Hooks",
+    "commit-validation": "Commit Message Validation",
+    linter: "Linters",
+    ci: "CI/CD Pipelines",
+    "pr-template": "PR Templates",
+    opencode: "OpenCode Configuration",
+    formatter: "Formatters",
+  }
+
+  for (const [type, mechs] of Object.entries(byType)) {
+    result += `### ${typeLabels[type] || type}\n\n`
+    for (const m of mechs) {
+      result += `- **${m.name}** (\`${m.configFile}\`): ${m.notes}\n`
+    }
+    result += "\n"
+  }
+
+  result += `### Recommendations
+
+Based on what's already set up, consider extending or integrating with these existing tools rather than adding new ones.`
+
+  return result
+}
+
 // Export constants for testing
 export { COMMAND_TEMPLATE, PLUGIN_REPO }
 
@@ -262,9 +595,27 @@ export const TeamAgreementsPlugin: Plugin = async (ctx) => {
     },
 
     /**
-     * Custom tool to suggest a topic for the team-agreements plugin
+     * Tools for team agreements management
      */
     tool: {
+      /**
+       * Detect existing enforcement mechanisms in the project
+       */
+      detect_enforcement_mechanisms: tool({
+        description:
+          "Detect existing enforcement mechanisms in the project (pre-commit hooks, CI workflows, " +
+          "linters, formatters, etc.). Use this before offering to set up enforcement for team agreements " +
+          "to understand what's already in place and avoid duplicating or conflicting with existing tooling.",
+        args: {},
+        async execute() {
+          const mechanisms = await detectEnforcementMechanisms(directory)
+          return formatEnforcementResults(mechanisms)
+        },
+      }),
+
+      /**
+       * Suggest a new topic for the team-agreements plugin
+       */
       suggest_team_agreement_topic: tool({
         description:
           "Suggest a new topic to be added to the team-agreements plugin. " +
