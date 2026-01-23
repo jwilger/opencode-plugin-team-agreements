@@ -50,41 +50,54 @@ describe("loadTeamAgreements", () => {
 
   beforeEach(async () => {
     testDir = join(tmpdir(), "team-agreements-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
-    await mkdir(join(testDir, "docs"), { recursive: true })
+    await mkdir(testDir, { recursive: true })
   })
 
   afterEach(async () => {
     await rm(testDir, { recursive: true, force: true })
   })
 
-  it("returns formatted content when agreements file exists", async () => {
+  it("returns formatted content when AGENTS.md exists", async () => {
     const agreementsContent = "# My Team Agreements\n\nWe agree to be awesome."
-    await writeFile(join(testDir, "docs", "TEAM_AGREEMENTS.md"), agreementsContent)
+    await writeFile(join(testDir, "AGENTS.md"), agreementsContent)
 
     const result = await loadTeamAgreements(testDir)
 
     expect(result).not.toBeNull()
     expect(result).toContain("## Team Agreements")
+    expect(result).toContain("from AGENTS.md")
     expect(result).toContain("The following team agreements are in effect")
     expect(result).toContain(agreementsContent)
   })
 
-  it("returns null when agreements file does not exist", async () => {
+  it("returns formatted content from CLAUDE.md when AGENTS.md does not exist", async () => {
+    const agreementsContent = "# Claude Rules\n\nBe helpful."
+    await writeFile(join(testDir, "CLAUDE.md"), agreementsContent)
+
+    const result = await loadTeamAgreements(testDir)
+
+    expect(result).not.toBeNull()
+    expect(result).toContain("## Team Agreements")
+    expect(result).toContain("from CLAUDE.md")
+    expect(result).toContain(agreementsContent)
+  })
+
+  it("prefers AGENTS.md over CLAUDE.md when both exist", async () => {
+    await writeFile(join(testDir, "AGENTS.md"), "# AGENTS content")
+    await writeFile(join(testDir, "CLAUDE.md"), "# CLAUDE content")
+
+    const result = await loadTeamAgreements(testDir)
+
+    expect(result).not.toBeNull()
+    expect(result).toContain("from AGENTS.md")
+    expect(result).toContain("# AGENTS content")
+    expect(result).not.toContain("# CLAUDE content")
+  })
+
+  it("returns null when neither file exists", async () => {
     const result = await loadTeamAgreements(testDir)
 
     expect(result).toBeNull()
-  })
-
-  it("returns null when docs directory does not exist", async () => {
-    const emptyDir = join(tmpdir(), "empty-test-" + Date.now())
-    await mkdir(emptyDir, { recursive: true })
-
-    try {
-      const result = await loadTeamAgreements(emptyDir)
-      expect(result).toBeNull()
-    } finally {
-      await rm(emptyDir, { recursive: true, force: true })
-    }
   })
 })
 
@@ -146,8 +159,11 @@ describe("buildTopicIssueBody", () => {
 describe("COMMAND_TEMPLATE", () => {
   it("contains required sections", () => {
     expect(COMMAND_TEMPLATE).toContain("$ARGUMENTS")
-    expect(COMMAND_TEMPLATE).toContain("## Instructions")
-    expect(COMMAND_TEMPLATE).toContain("Storage Location")
+    expect(COMMAND_TEMPLATE).toContain("## Overview")
+    expect(COMMAND_TEMPLATE).toContain("AGENTS.md")
+    expect(COMMAND_TEMPLATE).toContain("## Step 1: Analyze Existing Files")
+    expect(COMMAND_TEMPLATE).toContain("## Step 2: Determine the Scenario")
+    expect(COMMAND_TEMPLATE).toContain("## Step 3: Gather Team Agreements")
     expect(COMMAND_TEMPLATE).toContain("Programming Languages")
     expect(COMMAND_TEMPLATE).toContain("Code Quality Standards")
     expect(COMMAND_TEMPLATE).toContain("Commit Message Conventions")
@@ -166,7 +182,19 @@ describe("COMMAND_TEMPLATE", () => {
     expect(COMMAND_TEMPLATE).toContain("Pre-commit Hooks")
     expect(COMMAND_TEMPLATE).toContain("CI Workflows")
     expect(COMMAND_TEMPLATE).toContain("GitHub Rulesets")
-    expect(COMMAND_TEMPLATE).toContain("OpenCode Plugin Hooks")
+    expect(COMMAND_TEMPLATE).toContain("Linting Rules")
+  })
+
+  it("contains intelligent merging section", () => {
+    expect(COMMAND_TEMPLATE).toContain("## Step 4: Intelligent Merging")
+    expect(COMMAND_TEMPLATE).toContain("Preserve existing structure")
+    expect(COMMAND_TEMPLATE).toContain("Avoid duplication")
+  })
+
+  it("contains CLAUDE.md coordination section", () => {
+    expect(COMMAND_TEMPLATE).toContain("## Step 5: Handle CLAUDE.md Coordination")
+    expect(COMMAND_TEMPLATE).toContain("@AGENTS.md")
+    expect(COMMAND_TEMPLATE).toContain("Claude-specific")
   })
 })
 
@@ -380,7 +408,7 @@ describe("TeamAgreementsPlugin", () => {
 
   beforeEach(async () => {
     testDir = join(tmpdir(), "team-agreements-plugin-test-" + Date.now() + "-" + Math.random().toString(36).slice(2))
-    await mkdir(join(testDir, "docs"), { recursive: true })
+    await mkdir(testDir, { recursive: true })
   })
 
   afterEach(async () => {
@@ -408,8 +436,10 @@ describe("TeamAgreementsPlugin", () => {
     expect(config.command["team-agreements"].template).toBe(COMMAND_TEMPLATE)
   })
 
-  it("adds agreements to instructions when file exists", async () => {
-    await writeFile(join(testDir, "docs", "TEAM_AGREEMENTS.md"), "# Agreements")
+  it("does not inject instructions (AGENTS.md is auto-loaded by OpenCode)", async () => {
+    // Note: We no longer inject AGENTS.md into instructions because OpenCode
+    // automatically loads it from the project root
+    await writeFile(join(testDir, "AGENTS.md"), "# Agreements")
 
     const mockCtx = {
       directory: testDir,
@@ -425,55 +455,12 @@ describe("TeamAgreementsPlugin", () => {
 
     await hooks.config!(config)
 
-    expect(config.instructions).toBeDefined()
-    expect(config.instructions).toContain("docs/TEAM_AGREEMENTS.md")
-  })
-
-  it("does not add instructions when agreements file does not exist", async () => {
-    const mockCtx = {
-      directory: testDir,
-      client: {},
-      project: {},
-      worktree: testDir,
-      serverUrl: new URL("http://localhost"),
-      $: {} as any,
-    }
-
-    const hooks = await TeamAgreementsPlugin(mockCtx as any)
-    const config: any = {}
-
-    await hooks.config!(config)
-
+    // Config should NOT have instructions added - AGENTS.md is auto-loaded
     expect(config.instructions).toBeUndefined()
   })
 
-  it("does not duplicate instructions if already present", async () => {
-    await writeFile(join(testDir, "docs", "TEAM_AGREEMENTS.md"), "# Agreements")
-
-    const mockCtx = {
-      directory: testDir,
-      client: {},
-      project: {},
-      worktree: testDir,
-      serverUrl: new URL("http://localhost"),
-      $: {} as any,
-    }
-
-    const hooks = await TeamAgreementsPlugin(mockCtx as any)
-    const config: any = {
-      instructions: ["docs/TEAM_AGREEMENTS.md", "other-file.md"],
-    }
-
-    await hooks.config!(config)
-
-    const count = config.instructions.filter(
-      (i: string) => i === "docs/TEAM_AGREEMENTS.md"
-    ).length
-    expect(count).toBe(1)
-  })
-
-  it("provides compaction hook that injects agreements", async () => {
-    await writeFile(join(testDir, "docs", "TEAM_AGREEMENTS.md"), "# Test Agreements")
+  it("provides compaction hook that injects agreements from AGENTS.md", async () => {
+    await writeFile(join(testDir, "AGENTS.md"), "# Test Agreements")
 
     const mockCtx = {
       directory: testDir,

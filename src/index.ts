@@ -12,12 +12,10 @@
  */
 
 import { type Plugin, tool } from "@opencode-ai/plugin"
-import { join } from "path"
 
 import {
   COMMAND_TEMPLATE,
   PLUGIN_REPO,
-  fileExists,
   isGhAvailable,
   loadTeamAgreements,
   buildTopicIssueBody,
@@ -29,15 +27,19 @@ import {
 /**
  * TeamAgreementsPlugin - Helps teams establish and maintain shared agreements
  * for human-LLM collaboration on a codebase.
+ *
+ * Team agreements are stored in AGENTS.md (or CLAUDE.md as fallback) in the
+ * project root. These files are automatically loaded by OpenCode and Claude Code,
+ * so no config injection is needed.
  */
 export const TeamAgreementsPlugin: Plugin = async (ctx) => {
   const { directory } = ctx
-  const agreementsPath = "docs/TEAM_AGREEMENTS.md"
-  const fullAgreementsPath = join(directory, agreementsPath)
 
   return {
     /**
-     * Inject command definition and ensure agreements are in instructions
+     * Register the /team-agreements command.
+     * Note: We no longer inject AGENTS.md into instructions because OpenCode
+     * automatically loads it from the project root.
      */
     config: async (config) => {
       // Add the /team-agreements command
@@ -47,17 +49,6 @@ export const TeamAgreementsPlugin: Plugin = async (ctx) => {
       (config as any).command["team-agreements"] = {
         description: "Establish or review team agreements for human-LLM collaboration",
         template: COMMAND_TEMPLATE,
-      }
-
-      // If agreements file exists, ensure it's in instructions
-      if (await fileExists(fullAgreementsPath)) {
-        if (!config.instructions) {
-          (config as any).instructions = []
-        }
-        const instructions = (config as any).instructions as string[]
-        if (!instructions.includes(agreementsPath)) {
-          instructions.unshift(agreementsPath) // Add at beginning for priority
-        }
       }
     },
 
