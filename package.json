@@ -5,20 +5,36 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
     "opencode",
     "plugin",
     "team-agreements",
     "collaboration",
-    "llm"
+    "llm",
+    "ai",
+    "developer-tools"
   ],
-  "author": "",
+  "author": "John Wilger",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jwilger/opencode-plugin-team-agreements.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jwilger/opencode-plugin-team-agreements/issues"
+  },
+  "homepage": "https://github.com/jwilger/opencode-plugin-team-agreements#readme",
   "devDependencies": {
     "@opencode-ai/plugin": "^1.0.0",
     "@types/node": "^25.0.10",
