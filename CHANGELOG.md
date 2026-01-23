@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.2...opencode-plugin-team-agreements-v0.1.3) (2026-01-23)
+
+
+### Bug Fixes
+
+* **ci:** Remove registry-url to allow pure OIDC npm publishing ([#8](https://github.com/jwilger/opencode-plugin-team-agreements/issues/8)) ([5e0ec78](https://github.com/jwilger/opencode-plugin-team-agreements/commit/5e0ec78dbc4b92bf7e03089c83e81761b12870aa))
+* **ci:** Use GitHub App for release-please to enable signed commits ([#10](https://github.com/jwilger/opencode-plugin-team-agreements/issues/10)) ([281200a](https://github.com/jwilger/opencode-plugin-team-agreements/commit/281200a90d694d4b72b819dced74b405f93bfff5))
+
 ## [0.1.2](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.1...opencode-plugin-team-agreements-v0.1.2) (2026-01-23)
 
 
