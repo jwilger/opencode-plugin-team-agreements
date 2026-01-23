@@ -129,9 +129,7 @@ opencode-plugin-team-agreements/
 ├── package.json
 ├── tsconfig.json
 ├── src/
-│   ├── index.ts              # Plugin entry, exports TeamAgreementsPlugin
-│   └── topics/
-│       └── index.ts          # Topic registry (for future use)
+│   └── index.ts              # Plugin entry, exports TeamAgreementsPlugin
 └── docs/
     └── PLANNING.md
 ```
@@ -245,18 +243,22 @@ or based on answers from previous topics.
 - [x] Test that command is recognized by OpenCode
 
 ### Phase 2: Interactive Facilitation Engine
-- [ ] Build conversation flow for the 7 MVP topics
-- [ ] Each topic returns structured data
-- [ ] Topics can conditionally spawn follow-up questions
+- [x] Build conversation flow for the 7 MVP topics (via detailed command template)
+- [x] Each topic has detailed guidance with sub-questions
+- [x] Topics flow naturally with LLM-driven follow-up questions
+
+*Note: Facilitation is handled by the LLM following the command template rather than
+programmatic topic modules. This provides more natural conversation flow.*
 
 ### Phase 3: Agreement Document Generation
-- [ ] Generate `docs/TEAM_AGREEMENTS.md` from collected answers
-- [ ] Support referencing additional files when needed
-- [ ] Update `opencode.json` to add agreements to `instructions`
+- [x] Command template includes output format for `docs/TEAM_AGREEMENTS.md`
+- [x] Template guides LLM to create supporting files when needed
+- [x] Plugin auto-injects agreements into `instructions` config at startup
 
 ### Phase 4: Context Injection
 - [x] Hook into `experimental.session.compacting` to re-inject agreements
+- [x] Auto-add agreements to `instructions` via config hook at startup
 
 ### Phase 5: Menu for Existing Agreements
-- [ ] Detect existing agreements file
-- [ ] Present menu: Review, Amend specific section, Start over
+- [x] Command template instructs LLM to detect existing agreements
+- [x] Menu options: Review, Amend, Start Over (handled by LLM)
