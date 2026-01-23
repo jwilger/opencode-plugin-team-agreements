@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.3...opencode-plugin-team-agreements-v0.1.4) (2026-01-23)
+
+
+### Bug Fixes
+
+* **ci:** Configure npm trusted publishing correctly ([#11](https://github.com/jwilger/opencode-plugin-team-agreements/issues/11)) ([bbddb8a](https://github.com/jwilger/opencode-plugin-team-agreements/commit/bbddb8aac6a10afd917668dba3750cd5464f941b))
+
 ## [0.1.3](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.2...opencode-plugin-team-agreements-v0.1.3) (2026-01-23)
 
 
