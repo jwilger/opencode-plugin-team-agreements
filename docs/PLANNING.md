@@ -130,34 +130,35 @@ opencode-plugin-team-agreements/
 ├── tsconfig.json
 ├── src/
 │   ├── index.ts              # Plugin entry, exports TeamAgreementsPlugin
-│   ├── command.ts            # Command handler for /team-agreements
-│   ├── topics/
-│   │   ├── index.ts          # Topic registry and orchestration
-│   │   ├── storage.ts
-│   │   ├── languages.ts
-│   │   ├── code-quality.ts
-│   │   ├── commits.ts
-│   │   ├── integration.ts
-│   │   ├── testing.ts
-│   │   └── amendments.ts
-│   ├── generator.ts          # Markdown generation
-│   └── injection.ts          # Context injection hooks
+│   └── topics/
+│       └── index.ts          # Topic registry (for future use)
 └── docs/
     └── PLANNING.md
 ```
 
 ### Plugin Entry Point
 
-The plugin exports a function that returns hooks and commands:
+The plugin exports a function that returns hooks. Commands are registered
+via the `config` hook by mutating the config object:
 
 ```typescript
 import type { Plugin } from "@opencode-ai/plugin"
 
 export const TeamAgreementsPlugin: Plugin = async (ctx) => {
   return {
-    // Hook: Re-inject after compaction
+    // Register the /team-agreements command via config mutation
+    config: async (config) => {
+      if (!config.command) {
+        (config as any).command = {}
+      }
+      (config as any).command["team-agreements"] = {
+        description: "Establish or review team agreements",
+        template: COMMAND_TEMPLATE,
+      }
+    },
+
+    // Re-inject after compaction
     "experimental.session.compacting": async (input, output) => {
-      // Read team agreements and inject into context
       const agreements = await loadTeamAgreements(ctx.directory)
       if (agreements) {
         output.context.push(agreements)
@@ -167,21 +168,11 @@ export const TeamAgreementsPlugin: Plugin = async (ctx) => {
 }
 ```
 
-### Command Definition
+### Command Registration
 
-The `/team-agreements` command is defined via markdown file that the plugin
-generates in `.opencode/commands/team-agreements.md`:
-
-```markdown
----
-description: Establish or review team agreements for human-LLM collaboration
----
-
-$ARGUMENTS
-
-Please help me with team agreements for this project. If no specific request
-is provided above, check if team agreements exist and guide me accordingly.
-```
+Commands are registered via the `config` hook rather than creating markdown
+files. This ensures the command is available immediately on first run without
+race conditions.
 
 ### Interactive Flow
 
@@ -249,9 +240,9 @@ or based on answers from previous topics.
 
 ### Phase 1: Scaffold & Basic Command
 - [x] Initialize npm package with TypeScript
-- [ ] Create plugin skeleton
-- [ ] Create command markdown file
-- [ ] Test that command is recognized by OpenCode
+- [x] Create plugin skeleton
+- [x] Register command via config hook
+- [x] Test that command is recognized by OpenCode
 
 ### Phase 2: Interactive Facilitation Engine
 - [ ] Build conversation flow for the 7 MVP topics
@@ -264,7 +255,7 @@ or based on answers from previous topics.
 - [ ] Update `opencode.json` to add agreements to `instructions`
 
 ### Phase 4: Context Injection
-- [ ] Hook into `experimental.session.compacting` to re-inject agreements
+- [x] Hook into `experimental.session.compacting` to re-inject agreements
 
 ### Phase 5: Menu for Existing Agreements
 - [ ] Detect existing agreements file
