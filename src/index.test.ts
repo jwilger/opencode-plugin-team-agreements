@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { mkdir, writeFile, rm } from "fs/promises"
 import { join } from "path"
 import { tmpdir } from "os"
+import { TeamAgreementsPlugin } from "./index.js"
 import {
   fileExists,
   loadTeamAgreements,
@@ -11,8 +12,8 @@ import {
   formatEnforcementResults,
   COMMAND_TEMPLATE,
   PLUGIN_REPO,
-  TeamAgreementsPlugin,
-} from "./index.js"
+  type EnforcementMechanism,
+} from "./utils.js"
 
 describe("fileExists", () => {
   let testDir: string
@@ -324,9 +325,9 @@ describe("detectEnforcementMechanisms", () => {
     const result = await detectEnforcementMechanisms(testDir)
 
     expect(result.length).toBeGreaterThanOrEqual(3)
-    expect(result.map((m) => m.name)).toContain("husky")
-    expect(result.map((m) => m.name)).toContain("github-actions")
-    expect(result.map((m) => m.name)).toContain("biome")
+    expect(result.map((m: EnforcementMechanism) => m.name)).toContain("husky")
+    expect(result.map((m: EnforcementMechanism) => m.name)).toContain("github-actions")
+    expect(result.map((m: EnforcementMechanism) => m.name)).toContain("biome")
   })
 })
 
