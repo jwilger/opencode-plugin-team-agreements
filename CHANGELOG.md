@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.4...opencode-plugin-team-agreements-v0.2.0) (2026-01-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Team agreements are now stored in AGENTS.md (or CLAUDE.md as fallback) in the project root instead of docs/TEAM_AGREEMENTS.md
+
+### Features
+
+* Use AGENTS.md for team agreements instead of docs/TEAM_AGREEMENTS.md ([#15](https://github.com/jwilger/opencode-plugin-team-agreements/issues/15)) ([00365ab](https://github.com/jwilger/opencode-plugin-team-agreements/commit/00365ab4d17f0cd4e22c2731f12fd6875d5b01e1))
+
+
+### Bug Fixes
+
+* Only export plugin function to prevent OpenCode crash ([#13](https://github.com/jwilger/opencode-plugin-team-agreements/issues/13)) ([d4f5930](https://github.com/jwilger/opencode-plugin-team-agreements/commit/d4f5930e0620d490b3fae635275130309f1fcfc0))
+
 ## [0.1.4](https://github.com/jwilger/opencode-plugin-team-agreements/compare/opencode-plugin-team-agreements-v0.1.3...opencode-plugin-team-agreements-v0.1.4) (2026-01-23)
 
 
