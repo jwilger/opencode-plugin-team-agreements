@@ -1,6 +1,12 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import { type Plugin, tool } from "@opencode-ai/plugin"
 import { readFile, access } from "fs/promises"
 import { join } from "path"
+import { exec } from "child_process"
+import { promisify } from "util"
+
+const execAsync = promisify(exec)
+
+const PLUGIN_REPO = "jwilger/opencode-plugin-team-agreements"
 
 const COMMAND_TEMPLATE = `You are helping establish or review team agreements for this project. Team agreements define how humans and LLM agents collaborate on the codebase.
 
@@ -82,9 +88,11 @@ Ask where team agreements should be stored. Suggest defaults:
    
    Continue asking about each additional topic the user wants to cover.
    
-   Also mention: "If you think of a topic that should be a standard part of team agreements,
-   you can suggest it to the plugin maintainers at:
-   https://github.com/jwilger/opencode-plugin-team-agreements/issues/new?template=topic-suggestion.md"
+   After discussing additional topics, ask: "Would you like to suggest any of these additional topics
+   (or others you thought of) to be included as standard topics in the team-agreements plugin?
+   I can file a GitHub issue for you if you'd like."
+   
+   If the user wants to suggest a topic, use the \`suggest_team_agreement_topic\` tool to file an issue.
 
 6. After ALL topics (core + additional) are covered:
    - Generate \`docs/TEAM_AGREEMENTS.md\` with all agreements organized by topic
@@ -155,6 +163,18 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 /**
+ * Check if the gh CLI is installed and authenticated.
+ */
+async function isGhAvailable(): Promise<boolean> {
+  try {
+    await execAsync("gh auth status")
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Load team agreements from the project directory.
  * Returns the content if found, null otherwise.
  */
@@ -202,6 +222,78 @@ export const TeamAgreementsPlugin: Plugin = async (ctx) => {
           instructions.unshift(agreementsPath) // Add at beginning for priority
         }
       }
+    },
+
+    /**
+     * Custom tool to suggest a topic for the team-agreements plugin
+     */
+    tool: {
+      suggest_team_agreement_topic: tool({
+        description:
+          "Suggest a new topic to be added to the team-agreements plugin. " +
+          "This will file a GitHub issue on the plugin repository. " +
+          "Requires the gh CLI to be installed and authenticated.",
+        args: {
+          topic_name: tool.schema
+            .string()
+            .describe("A short, descriptive name for the suggested topic"),
+          description: tool.schema
+            .string()
+            .describe(
+              "Why this topic is important for human-LLM collaboration and what it should cover"
+            ),
+          suggested_questions: tool.schema
+            .array(tool.schema.string())
+            .describe(
+              "List of questions that should be asked when establishing agreements for this topic"
+            ),
+          example_agreement: tool.schema
+            .string()
+            .optional()
+            .describe("Optional example of what a good agreement for this topic might look like"),
+        },
+        async execute(args) {
+          // Check if gh is available
+          if (!(await isGhAvailable())) {
+            return (
+              "The gh CLI is not installed or not authenticated. " +
+              "Please install it from https://cli.github.com and run 'gh auth login', " +
+              "or manually file an issue at: " +
+              `https://github.com/${PLUGIN_REPO}/issues/new?template=topic-suggestion.md`
+            )
+          }
+
+          // Build the issue body
+          const questionsFormatted = args.suggested_questions
+            .map((q) => `- ${q}`)
+            .join("\n")
+
+          const body = `## Topic Name
+${args.topic_name}
+
+## Description
+${args.description}
+
+## Suggested Questions
+${questionsFormatted}
+
+## Example Agreement
+${args.example_agreement || "_No example provided_"}
+
+## Additional Context
+_This issue was automatically created via the team-agreements plugin._`
+
+          try {
+            const title = `[Topic] ${args.topic_name}`
+            const { stdout } = await execAsync(
+              `gh issue create --repo "${PLUGIN_REPO}" --title "${title.replace(/"/g, '\\"')}" --body "${body.replace(/"/g, '\\"').replace(/\n/g, "\\n")}" --label "enhancement,topic-suggestion"`
+            )
+            return `Successfully created issue: ${stdout.trim()}`
+          } catch (error) {
+            return `Failed to create issue: ${error}. You can manually file one at: https://github.com/${PLUGIN_REPO}/issues/new?template=topic-suggestion.md`
+          }
+        },
+      }),
     },
 
     /**
