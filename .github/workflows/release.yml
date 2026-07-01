@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, self-hosted-gregor]
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -32,17 +33,17 @@ jobs:
 
   release-please:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, self-hosted-gregor]
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ vars.GH_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.GH_AUTOMATION_APP_PRIVATE_KEY }}
 
       - uses: googleapis/release-please-action@v4
         id: release
@@ -54,7 +55,7 @@ jobs:
   publish-npm:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, self-hosted-gregor]
     permissions:
       contents: read
       id-token: write
@@ -66,6 +67,7 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
