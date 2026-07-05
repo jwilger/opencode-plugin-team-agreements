@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: [self-hosted, self-hosted-gregor]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -33,29 +33,29 @@ jobs:
 
   release-please:
     needs: test
-    runs-on: [self-hosted, self-hosted-gregor]
+    runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ vars.GH_AUTOMATION_APP_ID }}
-          private-key: ${{ secrets.GH_AUTOMATION_APP_PRIVATE_KEY }}
+      - name: Load release secrets
+        id: load_secrets
+        uses: 1password/load-secrets-action@v4
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          GH_RELEASE_AUTOMATION_TOKEN: op://Github Secrets/GH_RELEASE_AUTOMATION_TOKEN/credential
 
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.load_secrets.outputs.GH_RELEASE_AUTOMATION_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
   publish-npm:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: [self-hosted, self-hosted-gregor]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
@@ -67,7 +67,6 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
-          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
