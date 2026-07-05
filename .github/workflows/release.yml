@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: [self-hosted, self-hosted-gregor]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +33,7 @@ jobs:
 
   release-please:
     needs: test
-    runs-on: [self-hosted, self-hosted-gregor]
+    runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -55,7 +55,7 @@ jobs:
   publish-npm:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: [self-hosted, self-hosted-gregor]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
